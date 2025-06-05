@@ -1,0 +1,14 @@
+import os
+from pathlib import Path
+
+
+BASE_DIR = Path(__file__).resolve().parent
+USERS_FILE = os.path.join(BASE_DIR, "data/created_users.csv")
+CHECK_USER_FILE = os.path.exists(USERS_FILE)
+
+LENGTH_GENERATE = 10
+
+CREATED_COURIER = {
+    "login": "arstest",
+    "password": "Arstest1",
+    }
