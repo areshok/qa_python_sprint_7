@@ -17,5 +17,4 @@ CREATED_COURIER = {
 
 BD_FILE = os.path.join(BASE_DIR, "data/database.db")
 DB = f"sqlite:///{BD_FILE}"
-#print(DB)
 engine = create_engine(DB)
