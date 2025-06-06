@@ -1,67 +1,68 @@
 import allure
-
-from .base import BaseTestCase
+import pytest
 
 from ..api.courier import CourierRequest
-from ..data.models import User
 from ..settings import CREATED_COURIER
+from ..data.models import User as User
+from ..data.function import generate_user
 
 
-class TestCaseCourier(BaseTestCase):
+@pytest.mark.usefixtures("create_or_update_bd")
+class TestCaseCourier:
 
     @allure.title("""
     тест: проверка регистрации курьера, проверка успешнего ответа
     тест: успешный запрос возвращает {{"ok":true}}
     """)
-    def test_create_courier(self):
+    def test_create_courier(self, database):
         """
         тест: проверка регистрации курьера, проверка успешнего ответа
         тест: успешный запрос возвращает {"ok":true}
         """
-        user = User()
+        data = generate_user()
         courier = CourierRequest()
-        response = courier.registrate_courier(**user.get())
-        self.assertEqual(response["status"], 201)
-        self.assertTrue(response["response"][courier.ResponseField.create])
-        user.save()
+        user = User(**data)
+        response = courier.registrate_courier(**data)
+        assert response["status"] == 201
+        assert response["response"][courier.ResponseField.create] is True
+        database.write_one(user)
 
     @allure.title("""
     тест: првоерка что нельзя создать двух одинаковых курьеров
     тест: проверка появления ошибки при регистрации курьера
     с логиным который уже есть в системе
     """)
-    def test_cant_create_two_identical_couriers(self):
+    def test_cant_create_two_identical_couriers(self, database):
         """
         тест: првоерка что нельзя создать двух одинаковых курьеров
         тест: проверка появления ошибки при регистрации курьера
         с логиным который уже есть в системе
         """
-        user = User()
+        data = generate_user()
+        user = User(**data)
         courier = CourierRequest()
-        response = courier.registrate_courier(**user.get())
-        self.assertEqual(response["status"], 201)
-        self.assertTrue(response["response"][courier.ResponseField.create])
-        user.save()
-        response = courier.registrate_courier(**user.get())
-        self.assertEqual(response["status"], 409)
-        self.assertIn(
-            courier.ResponseText.dublicat_user,
-            response["response"][courier.ResponseField.err]
-        )
+        response = courier.registrate_courier(**data)
+        assert response["status"] == 201
+        assert response["response"][courier.ResponseField.create] is True
+        database.write_one(user)
+        response = courier.registrate_courier(**data)
+        assert response["status"] == 409
+        assert courier.ResponseText.dublicat_user in response["response"][courier.ResponseField.err]
 
     @allure.title(
         "тест: регистрация курьера заполнены обязательные поля (логин, пароль)"
         )
-    def test_registercourier_fields_login_password(self):
+    def test_registercourier_fields_login_password(self, database):
         "тест: регистрация курьера заполнены обязательные поля (логин, пароль)"
-        user = User()
+        data = generate_user()
+        user = User(**data)
         courier = CourierRequest()
         response = courier.registrate_courier(
             login=user.login, password=user.password
         )
-        self.assertEqual(response["status"], 201)
-        self.assertTrue(response["response"][courier.ResponseField.create])
-        user.save()
+        assert response["status"] == 201
+        assert response["response"][courier.ResponseField.create] is True
+        database.write_one(user)
 
     @allure.title("""
     тест: проверка появление ошибки при регистрации пользователя,
@@ -72,15 +73,13 @@ class TestCaseCourier(BaseTestCase):
         тест: проверка появление ошибки при регистрации пользователя,
         поле login отсутсвует
         """
-        user = User()
+        data = generate_user()
+        user = User(**data)
         courier = CourierRequest()
         response = courier.registrate_courier(
             password=user.password, firstname=user.firstname)
-        self.assertEqual(response["status"], 400)
-        self.assertIn(
-            courier.ResponseText.missing_field_register,
-            response["response"][courier.ResponseField.err]
-        )
+        assert response["status"] == 400
+        assert courier.ResponseText.missing_field_register in response["response"][courier.ResponseField.err]
 
     @allure.title("""
     тест: проверка появление ошибки при регистрации пользователя,
@@ -91,15 +90,12 @@ class TestCaseCourier(BaseTestCase):
         тест: проверка появление ошибки при регистрации пользователя,
         поле password отсутсвует
         """
-        user = User()
+        user = User(**generate_user())
         courier = CourierRequest()
         response = courier.registrate_courier(
             password=user.login, firstname=user.firstname)
-        self.assertEqual(response["status"], 400)
-        self.assertIn(
-            courier.ResponseText.missing_field_register,
-            response["response"][courier.ResponseField.err]
-        )
+        assert response["status"] == 400
+        assert courier.ResponseText.missing_field_register in response["response"][courier.ResponseField.err]
 
     @allure.title("""
     тест: проверка появление ошибки при регистрации пользователя,
@@ -110,15 +106,12 @@ class TestCaseCourier(BaseTestCase):
         тест: проверка появление ошибки при регистрации пользователя,
         поле firstaname отсутсвует
         """
-        user = User()
+        user = User(**generate_user())
         courier = CourierRequest()
         response = courier.registrate_courier(
             password=user.login, firstname=user.password)
-        self.assertEqual(response["status"], 400)
-        self.assertIn(
-            courier.ResponseText.missing_field_register,
-            response["response"][courier.ResponseField.err]
-        )
+        assert response["status"] == 400
+        assert courier.ResponseText.missing_field_register in response["response"][courier.ResponseField.err]
 
     @allure.title("""
     тест: проверка авторизации курьера
@@ -131,8 +124,8 @@ class TestCaseCourier(BaseTestCase):
         """
         courier = CourierRequest()
         response = courier.login_courier(**CREATED_COURIER)
-        self.assertEqual(response["status"], 200)
-        self.assertIn(courier.ResponseField.login, response["response"])
+        assert response["status"] == 200
+        assert courier.ResponseField.login in response["response"]
 
     @allure.title("""
     тест: проверка появление ошибки при отсутсвии поля логина
@@ -142,11 +135,8 @@ class TestCaseCourier(BaseTestCase):
         courier = CourierRequest()
         data = {"password": CREATED_COURIER["password"]}
         response = courier.login_courier(**data)
-        self.assertEqual(response["status"], 400)
-        self.assertEqual(
-            response["response"][courier.ResponseField.err],
-            courier.ResponseText.missing_field_login
-        )
+        assert response["status"] == 400
+        assert response["response"][courier.ResponseField.err] == courier.ResponseText.missing_field_login
 
     @allure.title("""
     тест: проверка появление ошибки при отсутсвии поля пароля
@@ -156,11 +146,8 @@ class TestCaseCourier(BaseTestCase):
         courier = CourierRequest()
         data = {"password": CREATED_COURIER["login"]}
         response = courier.login_courier(**data)
-        self.assertEqual(response["status"], 400)
-        self.assertEqual(
-            response["response"][courier.ResponseField.err],
-            courier.ResponseText.missing_field_login
-        )
+        assert response["status"] == 400
+        assert response["response"][courier.ResponseField.err] == courier.ResponseText.missing_field_login
 
     @allure.title("""
     тест: появление ошибки при попытке входа в систему с несуществующем логоном
@@ -171,11 +158,8 @@ class TestCaseCourier(BaseTestCase):
         с несуществующем логином.
         """
         courier = CourierRequest()
-        user = User()
+        user = User(**generate_user())
         response = courier.login_courier(
             **{"login": user.login, "password": user.password})
-        self.assertEqual(response["status"], 404)
-        self.assertEqual(
-            response["response"][courier.ResponseField.err],
-            courier.ResponseText.non_existent
-        )
+        assert response["status"] == 404
+        assert response["response"][courier.ResponseField.err] == courier.ResponseText.non_existent
